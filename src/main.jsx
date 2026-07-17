@@ -1,5 +1,7 @@
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { createRoot } from 'react-dom/client'
+import ForgeLoader from './components/ForgeLoader'
+import MediaSkeleton from './components/MediaSkeleton'
 import './styles.css'
 
 const templates = [
@@ -44,6 +46,32 @@ const templates = [
   ['39','Primal','hero-primal-1.webp','Hero / Experimental'],
 ]
 
+const originalVideoTemplates = new Set([
+  '01', '02', '03', '06', '08', '09', '21', '22', '24',
+  '26', '27', '28', '29', '30', '31', '32', '33', '34',
+  '35', '36', '37', '38', '39',
+])
+
+const originalGalleryOrder = [
+  '02', '03', '09', '01', '06', '08', '21', '22', '24',
+  '26', '27', '28', '29', '30', '31', '32', '33', '34',
+  '35', '36', '37', '38', '39',
+]
+const galleryTemplates = originalGalleryOrder.map(number => templates.find(item => item[0] === number))
+
+const primaryVideoUrl = (item) => originalVideoTemplates.has(item[0])
+  ? `/videos/optimized/template-${item[0]}.mp4`
+  : `/videos/template-${item[0]}.mp4`
+
+const criticalVideoUrls = [
+  '/videos/optimized/hero-showcase.mp4',
+  ...templates.slice(0, 6).map(primaryVideoUrl),
+]
+const allVideoUrls = [...new Set([
+  '/videos/optimized/hero-showcase.mp4',
+  ...templates.map(primaryVideoUrl),
+])]
+
 const Arrow = () => <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
 const Bag = () => <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 8h12l1 12H5L6 8Z"/><path d="M9 9V6a3 3 0 0 1 6 0v3"/></svg>
 const Check = () => <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg>
@@ -52,26 +80,58 @@ function Brand() {
   return <a className="brand" href="#top" aria-label="1Forge Designs home"><img src="/brand/1forge-logo.png" alt="1Forge"/></a>
 }
 
-function TemplateMedia({ item, compact = false }) {
+function TemplateMedia({ item, compact = false, active = true }) {
   const videoRef = useRef(null)
-  const videoFile = ['09', '24', '30'].includes(item[0]) ? `template-${item[0]}.webm` : `template-${item[0]}.mp4`
+  const [ready, setReady] = useState(false)
+  const usesOriginalVideo = originalVideoTemplates.has(item[0])
+  const videoFile = usesOriginalVideo
+    ? `optimized/template-${item[0]}.mp4`
+    : `template-${item[0]}.mp4`
 
   useEffect(() => {
     const video = videoRef.current
     if (!video) return
+    if (!active) {
+      video.pause()
+      return
+    }
     const observer = new IntersectionObserver(([entry]) => {
       if (entry.isIntersecting) video.play().catch(() => {})
       else video.pause()
-    }, { rootMargin: '180px', threshold: 0.08 })
+    }, { rootMargin: '0px', threshold: 0.45 })
     observer.observe(video)
     return () => observer.disconnect()
-  }, [])
+  }, [active])
 
-  return <div className={`template-media ${compact ? 'template-media--compact' : ''}`}>
-    <video ref={videoRef} muted loop playsInline preload="metadata" poster={`/templates/${item[2]}`} aria-label={`${item[1]} animated preview`}>
-      <source src={`/videos/${videoFile}`} type={videoFile.endsWith('.webm') ? 'video/webm' : 'video/mp4'}/>
+  return <div className={`template-media ${compact ? 'template-media--compact' : ''} ${ready ? 'template-media--ready' : ''}`}>
+    <video ref={videoRef} muted loop playsInline preload="none" poster={`/templates/${item[2]}`} aria-label={`${item[1]} animated preview`} onCanPlay={() => setReady(true)} onPlaying={() => setReady(true)} onError={() => setReady(true)}>
+      <source src={`/videos/${videoFile}`} type="video/mp4"/>
+      {usesOriginalVideo && <source src={`/videos/original/template-${item[0]}.webm`} type="video/webm"/>}
     </video>
+    <MediaSkeleton active={!ready} label={`${item[0]} / Loading preview`}/>
   </div>
+}
+
+function HeroMedia({ active = true }) {
+  const videoRef = useRef(null)
+  const [ready, setReady] = useState(false)
+
+  useEffect(() => {
+    const video = videoRef.current
+    if (!video) return
+    if (!active) {
+      video.pause()
+      return
+    }
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) video.play().catch(() => {})
+      else video.pause()
+    }, { threshold: 0.08 })
+    observer.observe(video)
+    return () => observer.disconnect()
+  }, [active])
+
+  return <div className={`hero-media-shell ${ready ? 'hero-media-shell--ready' : ''}`}><video ref={videoRef} className="hero-media" muted loop playsInline preload="metadata" poster="/templates/hero-poster.webp" aria-label="1Forge template collection animated preview" onCanPlay={() => setReady(true)} onPlaying={() => setReady(true)} onError={() => setReady(true)}><source src="/videos/optimized/hero-showcase.mp4" type="video/mp4"/><source src="/videos/original/hero-showcase.webm" type="video/webm"/></video><MediaSkeleton active={!ready} label="Preparing flagship preview"/></div>
 }
 
 function Mockup({ variant, compact = false }) {
@@ -83,6 +143,7 @@ function Mockup({ variant, compact = false }) {
 }
 
 function App() {
+  const [appReady, setAppReady] = useState(false)
   const [menu, setMenu] = useState(false)
   const [selected, setSelected] = useState(null)
   const [cartOpen, setCartOpen] = useState(false)
@@ -90,9 +151,37 @@ function App() {
   const [notice, setNotice] = useState('')
 
   useEffect(() => {
-    document.body.style.overflow = selected || cartOpen || menu ? 'hidden' : ''
+    document.body.style.overflow = !appReady || selected || cartOpen || menu ? 'hidden' : ''
     return () => { document.body.style.overflow = '' }
-  }, [selected, cartOpen, menu])
+  }, [appReady, selected, cartOpen, menu])
+
+  const finishLoader = useCallback(() => setAppReady(true), [])
+
+  useEffect(() => {
+    if (!appReady) return
+    const controller = new AbortController()
+    const remaining = allVideoUrls.filter(url => !criticalVideoUrls.includes(url))
+    let cursor = 0
+
+    const worker = async () => {
+      while (cursor < remaining.length && !controller.signal.aborted) {
+        const url = remaining[cursor]
+        cursor += 1
+        try {
+          const response = await fetch(url, { cache: 'force-cache', signal: controller.signal })
+          if (response.ok) await response.blob()
+        } catch (error) {
+          if (error.name !== 'AbortError') console.warn(`Background preload failed: ${url}`)
+        }
+      }
+    }
+
+    const startTimer = window.setTimeout(() => Promise.all([worker(), worker()]), 700)
+    return () => {
+      window.clearTimeout(startTimer)
+      controller.abort()
+    }
+  }, [appReady])
 
   const addToCart = (item) => {
     setCart((current) => current.some((x) => x[0] === item[0]) ? current : [...current, item])
@@ -107,6 +196,7 @@ function App() {
   }
 
   return <>
+    {!appReady && <ForgeLoader assets={criticalVideoUrls} onComplete={finishLoader}/>} 
     <div className="noise" aria-hidden="true"/>
     <header className="header" id="top">
       <Brand/>
@@ -126,7 +216,7 @@ function App() {
         <h1>Premium templates.<br/><em>Built to perform.</em></h1>
         <p className="hero__lede">The design systems and polished sections we use at 1Forge—ready to adapt, learn from, and launch faster.</p>
         <div className="promises"><span><Check/>Works on the <strong>free Figma plan</strong></span><span><Check/><strong>Lifetime access</strong> to every pack update</span></div>
-        <div className="hero-frame glass"><div className="live"><i/> LIVE PREVIEW</div><video className="hero-media" autoPlay muted loop playsInline preload="auto" poster="/templates/hero-poster.webp" aria-label="1Forge template collection animated preview"><source src="/videos/hero-showcase.webm" type="video/webm"/></video></div>
+        <div className="hero-frame glass"><div className="live"><i/> LIVE PREVIEW</div><HeroMedia active={appReady}/></div>
         <div className="hero-actions"><a className="button button--primary" href="#collection">Explore the collection <Arrow/></a><a className="button button--ghost" href="#gallery">See the quality ↓</a></div>
       </section>
 
@@ -135,7 +225,7 @@ function App() {
         <div className="availability"><span>39 launch concepts</span><span>New releases every week</span><span>Single templates + full pack</span></div>
         <div className="template-grid">
           {templates.map((item) => <article className="template-card glass" key={item[0]}>
-            <button className="template-preview" onClick={() => setSelected(item)} aria-label={`Preview ${item[1]}`}><TemplateMedia item={item} compact/></button>
+            <button className="template-preview" onClick={() => setSelected(item)} aria-label={`Preview ${item[1]}`}><TemplateMedia item={item} compact active={!selected && !cartOpen}/></button>
             <div className="template-meta"><span>{item[0]}</span><div><b>{item[1]}</b><small>{item[3]}</small></div><button onClick={() => addToCart(item)} aria-label={`Add ${item[1]} to launch list`}><Bag/></button></div>
           </article>)}
         </div>
@@ -145,7 +235,7 @@ function App() {
       <section id="gallery" className="section-shell section-pad gallery-section">
         <div className="eyebrow">PREVIEW GALLERY</div><h2>See the <em>1Forge level.</em></h2>
         <div className="gallery-grid">
-          {[templates[1],templates[2],templates[8],templates[20],templates[25],templates[27]].map((item, i) => <button className={`gallery-tile gallery-tile--${i+1}`} key={item[0]} onClick={() => setSelected(item)} aria-label={`Open ${item[1]} preview`}><TemplateMedia item={item}/><span>{item[0]} / {item[1]}</span></button>)}
+          {galleryTemplates.map((item, i) => <button className={`gallery-tile gallery-tile--${(i % 6) + 1}`} key={item[0]} onClick={() => setSelected(item)} aria-label={`Open ${item[1]} preview`}><TemplateMedia item={item} active={!selected && !cartOpen}/><span>{item[0]} / {item[1]}</span></button>)}
         </div>
       </section>
 

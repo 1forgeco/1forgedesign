@@ -52,15 +52,17 @@ for index in "${!files[@]}"; do
   number=$(printf "%02d" "$((index + 1))")
   output="$video_dir/template-$number.mp4"
 
-  # Preserve the original WebM motion assets already downloaded for 09, 24 and 30.
-  if [[ "$number" == "09" || "$number" == "24" || "$number" == "30" ]]; then
-    continue
-  fi
+  # Preserve every genuine WebM loop recovered from the reference gallery.
+  case "$number" in
+    01|02|03|06|08|09|21|22|24|26|27|28|29|30|31|32|33|34|35|36|37|38|39)
+      continue
+      ;;
+  esac
 
   ffmpeg -hide_banner -loglevel error -y \
     -loop 1 -i "$image_dir/${files[$index]}" \
-    -vf "scale=600:800:force_original_aspect_ratio=increase,crop=600:800,zoompan=z='min(zoom+0.00065,1.045)':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=72:s=600x800:fps=12,format=yuv420p" \
-    -t 6 -an -c:v libx264 -preset veryfast -crf 29 -movflags +faststart \
+    -vf "scale=600:800:force_original_aspect_ratio=increase,crop=600:800,zoompan=z='1+0.04*(1-cos(2*PI*on/179))/2':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=180:s=600x800:fps=30,format=yuv420p" \
+    -frames:v 180 -an -c:v libx264 -preset veryfast -crf 27 -g 60 -keyint_min 30 -movflags +faststart \
     "$output"
 done
 
