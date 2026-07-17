@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import './styles.css'
 
@@ -49,11 +49,29 @@ const Bag = () => <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 8h12l1
 const Check = () => <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg>
 
 function Brand() {
-  return <a className="brand" href="#top" aria-label="1Forge Designs home"><img src="/1forge-logo.svg" alt="1Forge"/><span>DESIGNS</span></a>
+  return <a className="brand" href="#top" aria-label="1Forge Designs home"><img src="/brand/1forge-logo.png" alt="1Forge"/></a>
 }
 
 function TemplateMedia({ item, compact = false }) {
-  return <div className={`template-media ${compact ? 'template-media--compact' : ''}`}><img src={`/templates/${item[2]}`} alt={item[1]} loading="lazy"/></div>
+  const videoRef = useRef(null)
+  const videoFile = ['09', '24', '30'].includes(item[0]) ? `template-${item[0]}.webm` : `template-${item[0]}.mp4`
+
+  useEffect(() => {
+    const video = videoRef.current
+    if (!video) return
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) video.play().catch(() => {})
+      else video.pause()
+    }, { rootMargin: '180px', threshold: 0.08 })
+    observer.observe(video)
+    return () => observer.disconnect()
+  }, [])
+
+  return <div className={`template-media ${compact ? 'template-media--compact' : ''}`}>
+    <video ref={videoRef} muted loop playsInline preload="metadata" poster={`/templates/${item[2]}`} aria-label={`${item[1]} animated preview`}>
+      <source src={`/videos/${videoFile}`} type={videoFile.endsWith('.webm') ? 'video/webm' : 'video/mp4'}/>
+    </video>
+  </div>
 }
 
 function Mockup({ variant, compact = false }) {
@@ -108,7 +126,7 @@ function App() {
         <h1>Premium templates.<br/><em>Built to perform.</em></h1>
         <p className="hero__lede">The design systems and polished sections we use at 1Forge—ready to adapt, learn from, and launch faster.</p>
         <div className="promises"><span><Check/>Works on the <strong>free Figma plan</strong></span><span><Check/><strong>Lifetime access</strong> to every pack update</span></div>
-        <div className="hero-frame glass"><div className="live"><i/> LIVE PREVIEW</div><img className="hero-media" src="/templates/hero-poster.webp" alt="1Forge template collection preview"/></div>
+        <div className="hero-frame glass"><div className="live"><i/> LIVE PREVIEW</div><video className="hero-media" autoPlay muted loop playsInline preload="auto" poster="/templates/hero-poster.webp" aria-label="1Forge template collection animated preview"><source src="/videos/hero-showcase.webm" type="video/webm"/></video></div>
         <div className="hero-actions"><a className="button button--primary" href="#collection">Explore the collection <Arrow/></a><a className="button button--ghost" href="#gallery">See the quality ↓</a></div>
       </section>
 
