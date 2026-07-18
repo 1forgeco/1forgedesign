@@ -47,7 +47,7 @@ const templates = [
 ]
 
 const originalVideoTemplates = new Set([
-  '01', '02', '03', '06', '08', '09', '21', '22', '24',
+  '01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12', '20', '21', '22', '24',
   '26', '27', '28', '29', '30', '31', '32', '33', '34',
   '35', '36', '37', '38', '39',
 ])
@@ -119,7 +119,7 @@ function Brand() {
   return <a className="brand" href="/" aria-label="1Forge Designs home"><img src="/brand/1forge-logo.png" alt="1Forge"/></a>
 }
 
-function TemplateMedia({ item, compact = false, active = true }) {
+function TemplateMedia({ item, compact = false, active = true, cinematic = false }) {
   const videoRef = useRef(null)
   const [ready, setReady] = useState(false)
   const usesOriginalVideo = originalVideoTemplates.has(item[0])
@@ -142,8 +142,9 @@ function TemplateMedia({ item, compact = false, active = true }) {
     return () => observer.disconnect()
   }, [active])
 
-  return <div className={`template-media ${compact ? 'template-media--compact' : ''} ${ready ? 'template-media--ready' : ''}`}>
+  return <div className={`template-media ${compact ? 'template-media--compact' : ''} ${cinematic ? 'template-media--cinematic' : ''} ${ready ? 'template-media--ready' : ''}`}>
     <video ref={videoRef} muted loop playsInline preload="none" poster={`/templates/${item[2]}`} aria-label={`${item[1]} animated preview`} onCanPlay={() => setReady(true)} onPlaying={() => setReady(true)} onError={() => setReady(true)}>
+      {cinematic && <source src={`/videos/4k/template-${item[0]}.mp4`} type="video/mp4" media="(min-width: 760px)"/>}
       <source src={`/videos/${videoFile}`} type="video/mp4"/>
       {usesOriginalVideo && <source src={`/videos/original/template-${item[0]}.webm`} type="video/webm"/>}
     </video>
@@ -170,7 +171,7 @@ function HeroMedia({ active = true }) {
     return () => observer.disconnect()
   }, [active])
 
-  return <div className={`hero-media-shell ${ready ? 'hero-media-shell--ready' : ''}`}><video ref={videoRef} className="hero-media" muted loop playsInline preload="metadata" poster="/templates/hero-poster.webp" aria-label="1Forge template collection animated preview" onCanPlay={() => setReady(true)} onPlaying={() => setReady(true)} onError={() => setReady(true)}><source src="/videos/optimized/hero-showcase.mp4" type="video/mp4"/><source src="/videos/original/hero-showcase.webm" type="video/webm"/></video><MediaSkeleton active={!ready} label="Preparing flagship preview"/></div>
+  return <div className={`hero-media-shell ${ready ? 'hero-media-shell--ready' : ''}`}><video ref={videoRef} className="hero-media" muted loop playsInline preload="metadata" poster="/templates/hero-poster.webp" aria-label="1Forge template collection animated preview" onCanPlay={() => setReady(true)} onPlaying={() => setReady(true)} onError={() => setReady(true)}><source src="/videos/4k/hero-showcase.mp4" type="video/mp4" media="(min-width: 1200px)"/><source src="/videos/optimized/hero-showcase.mp4" type="video/mp4"/><source src="/videos/original/hero-showcase.webm" type="video/webm"/></video><MediaSkeleton active={!ready} label="Preparing flagship preview"/></div>
 }
 
 function Mockup({ variant, compact = false }) {
@@ -289,7 +290,7 @@ function ProductPage({ item, goHome, saveTemplate, saved }) {
 
     <main>
       <section className="product-hero">
-        <div className="product-hero__media"><TemplateMedia item={item}/></div>
+        <div className="product-hero__media"><TemplateMedia item={item} cinematic/></div>
         <div className="product-hero__shade"/>
         <div className="product-hero__topline"><span>{item[0]} / 39</span><span>{item[3]}</span><span>FIGMA / LAUNCH EDITION</span></div>
         <div className="product-hero__content">
@@ -310,7 +311,7 @@ function ProductPage({ item, goHome, saveTemplate, saved }) {
       </section>
 
       <section className="product-showcase section-shell">
-        <div className="product-showcase__frame glass"><TemplateMedia item={item}/><span>FULL MOTION PREVIEW / {item[1]}</span></div>
+        <div className="product-showcase__frame glass"><TemplateMedia item={item} cinematic/><span>4K PRESENTATION / {item[1]}</span></div>
         <div className="product-showcase__notes">
           <article><span>01</span><h3>Designed as a system</h3><p>Reusable visual decisions keep the page feeling intentional as you adapt it.</p></article>
           <article><span>02</span><h3>Made to become yours</h3><p>Typography, color, imagery, copy and composition remain fully editable in Figma.</p></article>
@@ -442,8 +443,12 @@ function App() {
     }, 50)
   }
 
+  const loaderAssets = currentTemplate
+    ? [window.matchMedia('(min-width: 760px)').matches ? `/videos/4k/template-${currentTemplate[0]}.mp4` : primaryVideoUrl(currentTemplate)]
+    : criticalVideoUrls
+
   return <>
-    {!appReady && <ForgeLoader assets={currentTemplate ? [primaryVideoUrl(currentTemplate)] : criticalVideoUrls} onComplete={finishLoader}/>}
+    {!appReady && <ForgeLoader assets={loaderAssets} onComplete={finishLoader}/>}
     <div className="noise" aria-hidden="true"/>
     {currentTemplate ? <ProductPage item={currentTemplate} goHome={goHome} saveTemplate={saveTemplate} saved={cart.some((item) => item[0] === currentTemplate[0])}/> : <>
     <header className="header" id="top">
