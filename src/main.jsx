@@ -59,6 +59,45 @@ const originalGalleryOrder = [
 ]
 const galleryTemplates = originalGalleryOrder.map(number => templates.find(item => item[0] === number))
 
+const slugify = (value) => value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
+const templatePath = (item) => `/template/${item[0]}-${slugify(item[1])}`
+const findTemplateFromPath = (pathname = window.location.pathname) => {
+  const match = pathname.match(/^\/template\/(\d{2})(?:-|$)/)
+  return match ? templates.find((item) => item[0] === match[1]) || null : null
+}
+
+const licenseOptions = [
+  { id: 'single', name: 'Single template', price: '₹2,499', note: 'For one personal or client project', featured: false },
+  { id: 'collection', name: 'Full collection', price: '₹9,999', note: 'Every launch template + lifetime pack updates', featured: true },
+  { id: 'studio', name: 'Studio license', price: '₹24,999', note: 'For teams creating work across client projects', featured: false },
+]
+
+const checkoutUrls = {
+  single: import.meta.env.VITE_CHECKOUT_SINGLE_URL,
+  collection: import.meta.env.VITE_CHECKOUT_COLLECTION_URL,
+  studio: import.meta.env.VITE_CHECKOUT_STUDIO_URL,
+}
+
+const productStories = {
+  '01': ['Botanical restraint meets editorial rhythm.', 'A poised starting point for wellness, fashion and independent brands that need warmth without losing precision.'],
+  '02': ['Luxury built from shadow, scale and restraint.', 'Designed for fashion, fragrance and premium launches that need a cinematic first impression.'],
+  '03': ['A quiet interface with a memorable point of view.', 'For thoughtful products and stories that benefit from clarity, whitespace and strong typography.'],
+}
+
+const getProductStory = (item) => productStories[item[0]] || [
+  `${item[3]} with a distinctly 1Forge point of view.`,
+  'A launch-ready visual foundation designed to be reshaped around your brand, story and product.',
+]
+
+const getWeeklyDrop = () => {
+  const fridayEpoch = new Date('2026-07-17T00:00:00')
+  const now = new Date()
+  const week = Math.max(0, Math.floor((now - fridayEpoch) / (7 * 24 * 60 * 60 * 1000)))
+  const item = templates[week % templates.length]
+  const nextDrop = new Date(fridayEpoch.getTime() + (week + 1) * 7 * 24 * 60 * 60 * 1000)
+  return { item, nextDrop }
+}
+
 const primaryVideoUrl = (item) => originalVideoTemplates.has(item[0])
   ? `/videos/optimized/template-${item[0]}.mp4`
   : `/videos/template-${item[0]}.mp4`
@@ -77,7 +116,7 @@ const Bag = () => <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 8h12l1
 const Check = () => <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg>
 
 function Brand() {
-  return <a className="brand" href="#top" aria-label="1Forge Designs home"><img src="/brand/1forge-logo.png" alt="1Forge"/></a>
+  return <a className="brand" href="/" aria-label="1Forge Designs home"><img src="/brand/1forge-logo.png" alt="1Forge"/></a>
 }
 
 function TemplateMedia({ item, compact = false, active = true }) {
@@ -142,23 +181,214 @@ function Mockup({ variant, compact = false }) {
   </div>
 }
 
+function SubscribeForm({ id, source, template, buttonLabel, compact = false, onSuccess }) {
+  const [email, setEmail] = useState('')
+  const [status, setStatus] = useState('idle')
+  const [message, setMessage] = useState('')
+
+  const submit = async (event) => {
+    event.preventDefault()
+    setStatus('loading')
+    setMessage('')
+
+    try {
+      const response = await fetch('/api/subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, source, template, website: '' }),
+      })
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.error || 'Something went wrong. Please try again.')
+      setStatus('success')
+      setMessage(data.message || 'You’re in. Watch your inbox for the next 1Forge drop.')
+      setEmail('')
+      onSuccess?.()
+    } catch (error) {
+      setStatus('error')
+      setMessage(error.message || 'Network error. Please try again.')
+    }
+  }
+
+  return <form className={`subscribe-form ${compact ? 'subscribe-form--compact' : ''}`} onSubmit={submit}>
+    <label htmlFor={id}>Your email</label>
+    <div>
+      <input id={id} type="email" required autoComplete="email" placeholder="you@studio.com" value={email} onChange={(event) => setEmail(event.target.value)} disabled={status === 'loading'}/>
+      <button className="button button--primary" type="submit" disabled={status === 'loading'}>{status === 'loading' ? 'Joining…' : buttonLabel}<Arrow/></button>
+    </div>
+    {message && <p className={`form-message form-message--${status}`} role="status">{message}</p>}
+  </form>
+}
+
+function WeeklyDrop({ openTemplate }) {
+  const { item, nextDrop } = getWeeklyDrop()
+  const releaseLabel = new Intl.DateTimeFormat('en', { day: 'numeric', month: 'long' }).format(nextDrop)
+
+  return <section id="free-drop" className="section-shell section-pad free-drop">
+    <div className="free-drop__card glass">
+      <div className="free-drop__media"><TemplateMedia item={item}/><span className="free-drop__badge">FREE / THIS WEEK</span></div>
+      <div className="free-drop__copy">
+        <div className="eyebrow">THE FRIDAY DROP</div>
+        <p className="free-drop__kicker">One complete 1Forge concept. Free every week.</p>
+        <h2>{item[1]}<br/><em>is on us.</em></h2>
+        <p>Get this week’s editable Figma release, then come back next Friday for an entirely new direction. No recycled freebies and no fake countdown.</p>
+        <div className="drop-clock"><span>Current drop <strong>{item[0]}</strong></span><span>Next release <strong>{releaseLabel}</strong></span></div>
+        <SubscribeForm id="free-drop-email" source="weekly-free" template={item[1]} buttonLabel="Unlock this week’s drop"/>
+        <button className="text-link" onClick={() => openTemplate(item)}>Explore {item[1]} before you join <Arrow/></button>
+      </div>
+    </div>
+  </section>
+}
+
+function ProductRating({ item }) {
+  const storageKey = `1forge-rating-${item[0]}`
+  const [rating, setRating] = useState(() => Number(localStorage.getItem(storageKey)) || 0)
+
+  const rate = (value) => {
+    localStorage.setItem(storageKey, String(value))
+    setRating(value)
+  }
+
+  return <div className="rating-panel">
+    <div><span className="eyebrow-label">COMMUNITY RATING</span><strong>{rating ? `Your rating: ${rating}/5` : 'Pre-release · Be first to rate'}</strong></div>
+    <div className="rating-stars" role="group" aria-label={`Rate ${item[1]}`}>
+      {[1,2,3,4,5].map(value => <button className={value <= rating ? 'is-active' : ''} key={value} onClick={() => rate(value)} aria-label={`${value} star${value > 1 ? 's' : ''}`}>★</button>)}
+    </div>
+    <small>Saved on this device. Public averages will appear after verified purchases begin.</small>
+  </div>
+}
+
+function ProductPage({ item, goHome, saveTemplate, saved }) {
+  const [storyTitle, storyCopy] = getProductStory(item)
+  const related = templates.filter((candidate) => candidate[0] !== item[0] && candidate[3].split(' / ')[0] === item[3].split(' / ')[0]).slice(0, 3)
+  const fallbackRelated = related.length === 3 ? related : templates.filter((candidate) => candidate[0] !== item[0]).slice(0, 3)
+  const checkoutReady = licenseOptions.every((option) => Boolean(checkoutUrls[option.id]))
+
+  const chooseLicense = (option) => {
+    const checkoutUrl = checkoutUrls[option.id]
+    saveTemplate(item, option.name)
+    if (checkoutUrl) {
+      const target = new URL(checkoutUrl)
+      target.searchParams.set('client_reference_id', `${item[0]}-${slugify(item[1])}`)
+      window.location.assign(target.toString())
+      return
+    }
+    window.setTimeout(() => document.querySelector('#product-access-email')?.focus(), 50)
+  }
+
+  useEffect(() => {
+    document.title = `${item[1]} — ${item[3]} Figma Template | 1Forge Designs`
+    window.scrollTo(0, 0)
+  }, [item])
+
+  return <div className="product-page">
+    <header className="product-header">
+      <Brand/>
+      <button className="product-back" onClick={goHome}>← Back to collection</button>
+      <button className="product-save" onClick={() => saveTemplate(item)}>{saved ? '★ Saved' : '☆ Save concept'}</button>
+    </header>
+
+    <main>
+      <section className="product-hero">
+        <div className="product-hero__media"><TemplateMedia item={item}/></div>
+        <div className="product-hero__shade"/>
+        <div className="product-hero__topline"><span>{item[0]} / 39</span><span>{item[3]}</span><span>FIGMA / LAUNCH EDITION</span></div>
+        <div className="product-hero__content">
+          <div className="eyebrow">1FORGE ORIGINAL</div>
+          <h1>{item[1]}</h1>
+          <p>{storyTitle}</p>
+          <div className="product-hero__actions">
+            <a className="button button--primary" href="#product-pricing">Choose your license <Arrow/></a>
+            <button className="button button--cinema" onClick={() => saveTemplate(item)}>{saved ? 'Saved to launch list' : 'Save for launch'}</button>
+          </div>
+        </div>
+        <div className="product-hero__scroll">SCROLL TO ENTER <i/></div>
+      </section>
+
+      <section className="product-story section-shell section-pad">
+        <div><div className="eyebrow">THE DIRECTION</div><h2>{storyTitle}</h2></div>
+        <div><p>{storyCopy}</p><p>The cinematic preview sets the mood. The editable file gives you the structure beneath it—ready for your typography, palette, imagery and product story.</p></div>
+      </section>
+
+      <section className="product-showcase section-shell">
+        <div className="product-showcase__frame glass"><TemplateMedia item={item}/><span>FULL MOTION PREVIEW / {item[1]}</span></div>
+        <div className="product-showcase__notes">
+          <article><span>01</span><h3>Designed as a system</h3><p>Reusable visual decisions keep the page feeling intentional as you adapt it.</p></article>
+          <article><span>02</span><h3>Made to become yours</h3><p>Typography, color, imagery, copy and composition remain fully editable in Figma.</p></article>
+          <article><span>03</span><h3>Ready for real work</h3><p>Commercial use is available for personal, client and multi-project studio workflows.</p></article>
+        </div>
+      </section>
+
+      <section className="included section-shell section-pad">
+        <div className="section-head"><div><div className="eyebrow">WHAT YOU RECEIVE</div><h2>Not a screenshot.<br/><em>A working foundation.</em></h2></div><p>The launch file is structured to help you move from inspiration to a credible first version without flattening the personality out of the design.</p></div>
+        <div className="included-grid">
+          {['Editable Figma source','Responsive composition guidance','Reusable component structure','Type + color direction','Quick-start customization notes','Commercial-use license'].map((label, index) => <div key={label}><span>{String(index + 1).padStart(2, '0')}</span><strong>{label}</strong><Check/></div>)}
+        </div>
+      </section>
+
+      <section id="product-pricing" className="product-pricing section-shell section-pad">
+        <div className="eyebrow">CHOOSE YOUR ACCESS</div>
+        <h2>Start with one.<br/><em>Build beyond it.</em></h2>
+        <div className="license-grid">
+          {licenseOptions.map(option => <article className={option.featured ? 'license-card license-card--featured' : 'license-card'} key={option.id}>
+            {option.featured && <span className="license-card__flag">BEST LAUNCH VALUE</span>}
+            <span className="license-card__index">{option.id === 'single' ? '01' : option.id === 'collection' ? '02' : '03'}</span>
+            <h3>{option.name}</h3><strong>{option.price}</strong><p>{option.note}</p>
+            <button className={`button ${option.featured ? 'button--primary' : 'button--outline'}`} onClick={() => chooseLicense(option)}>{checkoutUrls[option.id] ? 'Buy' : 'Reserve'} {option.name.toLowerCase()} <Arrow/></button>
+          </article>)}
+        </div>
+        <p className="pricing-note">Founding prices shown in INR. {checkoutReady ? 'Secure checkout opens through the selected purchase option.' : 'Payment opens with the first file release; reserving now does not charge you.'}</p>
+      </section>
+
+      <section className="product-trust section-shell section-pad">
+        <ProductRating item={item}/>
+        <div className="product-access glass">
+          <div><div className="eyebrow">PRIVATE LAUNCH ACCESS</div><h2>Get {item[1]}<br/><em>before the public drop.</em></h2></div>
+          <div><p>We’ll send the release, founding price and exact license terms to your inbox. No payment is taken today.</p><SubscribeForm id="product-access-email" source="product-access" template={item[1]} buttonLabel="Reserve launch access" compact/></div>
+        </div>
+      </section>
+
+      <section className="related section-shell section-pad">
+        <div className="section-head"><div><div className="eyebrow">KEEP EXPLORING</div><h2>More from<br/><em>the forge.</em></h2></div></div>
+        <div className="related-grid">{fallbackRelated.map(candidate => <a href={templatePath(candidate)} key={candidate[0]}><TemplateMedia item={candidate} compact/><span>{candidate[0]} / {candidate[1]} <i>↗</i></span></a>)}</div>
+      </section>
+    </main>
+
+    <footer className="footer section-shell"><Brand/><div><button onClick={goHome}>FULL COLLECTION</button><a href="mailto:hello@1forge.in">EMAIL</a></div><span>© 2026 1FORGE DESIGNS. ALL RIGHTS RESERVED.</span></footer>
+  </div>
+}
+
 function App() {
   const [appReady, setAppReady] = useState(false)
   const [menu, setMenu] = useState(false)
-  const [selected, setSelected] = useState(null)
+  const [currentTemplate, setCurrentTemplate] = useState(() => findTemplateFromPath())
   const [cartOpen, setCartOpen] = useState(false)
-  const [cart, setCart] = useState([])
+  const [cart, setCart] = useState(() => {
+    try {
+      const savedIds = JSON.parse(localStorage.getItem('1forge-launch-list') || '[]')
+      return savedIds.map((id) => templates.find((item) => item[0] === id)).filter(Boolean)
+    } catch { return [] }
+  })
   const [notice, setNotice] = useState('')
 
   useEffect(() => {
-    document.body.style.overflow = !appReady || selected || cartOpen || menu ? 'hidden' : ''
+    document.body.style.overflow = !appReady || cartOpen || menu ? 'hidden' : ''
     return () => { document.body.style.overflow = '' }
-  }, [appReady, selected, cartOpen, menu])
+  }, [appReady, cartOpen, menu])
+
+  useEffect(() => {
+    const syncRoute = () => setCurrentTemplate(findTemplateFromPath())
+    window.addEventListener('popstate', syncRoute)
+    return () => window.removeEventListener('popstate', syncRoute)
+  }, [])
+
+  useEffect(() => {
+    localStorage.setItem('1forge-launch-list', JSON.stringify(cart.map((item) => item[0])))
+  }, [cart])
 
   const finishLoader = useCallback(() => setAppReady(true), [])
 
   useEffect(() => {
-    if (!appReady) return
+    if (!appReady || currentTemplate) return
     const controller = new AbortController()
     const remaining = allVideoUrls.filter(url => !criticalVideoUrls.includes(url))
     let cursor = 0
@@ -181,28 +411,47 @@ function App() {
       window.clearTimeout(startTimer)
       controller.abort()
     }
-  }, [appReady])
+  }, [appReady, currentTemplate])
 
-  const addToCart = (item) => {
+  const saveTemplate = (item, plan) => {
     setCart((current) => current.some((x) => x[0] === item[0]) ? current : [...current, item])
-    setNotice(`${item[1]} added to your launch list`)
+    setNotice(plan ? `${plan} reserved for ${item[1]} — add your email below` : `${item[1]} saved to your launch list`)
     setTimeout(() => setNotice(''), 2200)
+  }
+
+  const openTemplate = (item) => {
+    window.history.pushState({}, '', templatePath(item))
+    setCurrentTemplate(item)
+    setMenu(false)
+    window.scrollTo(0, 0)
+  }
+
+  const goHome = () => {
+    window.history.pushState({}, '', '/')
+    setCurrentTemplate(null)
+    document.title = '1Forge Designs — Premium Figma Templates'
+    window.scrollTo(0, 0)
   }
 
   const joinLaunch = () => {
     setCartOpen(false)
-    document.querySelector('#launch-email')?.focus()
-    document.querySelector('#launch')?.scrollIntoView({ behavior: 'smooth' })
+    const fieldId = currentTemplate ? '#product-access-email' : '#launch-email'
+    window.setTimeout(() => {
+      document.querySelector(fieldId)?.focus()
+      document.querySelector(fieldId)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    }, 50)
   }
 
   return <>
-    {!appReady && <ForgeLoader assets={criticalVideoUrls} onComplete={finishLoader}/>} 
+    {!appReady && <ForgeLoader assets={currentTemplate ? [primaryVideoUrl(currentTemplate)] : criticalVideoUrls} onComplete={finishLoader}/>}
     <div className="noise" aria-hidden="true"/>
+    {currentTemplate ? <ProductPage item={currentTemplate} goHome={goHome} saveTemplate={saveTemplate} saved={cart.some((item) => item[0] === currentTemplate[0])}/> : <>
     <header className="header" id="top">
       <Brand/>
       <nav className={menu ? 'nav nav--open' : 'nav'} aria-label="Main navigation">
         <a href="#collection" onClick={() => setMenu(false)}>THE PACK</a>
         <a href="#gallery" onClick={() => setMenu(false)}>GALLERY</a>
+        <a href="#free-drop" onClick={() => setMenu(false)}>FREE FRIDAY</a>
         <a href="#for-you" onClick={() => setMenu(false)}>WHO IT’S FOR</a>
         <a href="#launch" onClick={() => setMenu(false)}>GET IT</a>
       </nav>
@@ -225,8 +474,8 @@ function App() {
         <div className="availability"><span>39 launch concepts</span><span>New releases every week</span><span>Single templates + full pack</span></div>
         <div className="template-grid">
           {templates.map((item) => <article className="template-card glass" key={item[0]}>
-            <button className="template-preview" onClick={() => setSelected(item)} aria-label={`Preview ${item[1]}`}><TemplateMedia item={item} compact active={!selected && !cartOpen}/></button>
-            <div className="template-meta"><span>{item[0]}</span><div><b>{item[1]}</b><small>{item[3]}</small></div><button onClick={() => addToCart(item)} aria-label={`Add ${item[1]} to launch list`}><Bag/></button></div>
+            <button className="template-preview" onClick={() => openTemplate(item)} aria-label={`Explore ${item[1]}`}><TemplateMedia item={item} compact active={!cartOpen}/></button>
+            <div className="template-meta"><span>{item[0]}</span><div><b>{item[1]}</b><small>{item[3]}</small></div><button onClick={() => saveTemplate(item)} aria-label={`Save ${item[1]} to launch list`}><Bag/></button></div>
           </article>)}
         </div>
         <div className="center"><a className="button button--primary" href="#launch">Get launch access <Arrow/></a></div>
@@ -235,9 +484,11 @@ function App() {
       <section id="gallery" className="section-shell section-pad gallery-section">
         <div className="eyebrow">PREVIEW GALLERY</div><h2>See the <em>1Forge level.</em></h2>
         <div className="gallery-grid">
-          {galleryTemplates.map((item, i) => <button className={`gallery-tile gallery-tile--${(i % 6) + 1}`} key={item[0]} onClick={() => setSelected(item)} aria-label={`Open ${item[1]} preview`}><TemplateMedia item={item} active={!selected && !cartOpen}/><span>{item[0]} / {item[1]}</span></button>)}
+          {galleryTemplates.map((item, i) => <button className={`gallery-tile gallery-tile--${(i % 6) + 1}`} key={item[0]} onClick={() => openTemplate(item)} aria-label={`Open ${item[1]} product page`}><TemplateMedia item={item} active={!cartOpen}/><span>{item[0]} / {item[1]}</span></button>)}
         </div>
       </section>
+
+      <WeeklyDrop openTemplate={openTemplate}/>
 
       <section id="for-you" className="section-shell section-pad audience">
         <div className="section-head"><div><div className="eyebrow">WHO IT’S FOR</div><h2>Made for people<br/><em>who care about craft.</em></h2></div></div>
@@ -259,7 +510,7 @@ function App() {
           <h2>Launch<br/><em>access.</em></h2>
           <p>Be first to see the full collection, receive founding pricing, and get notified the moment the files go live.</p>
           <div className="perks"><span><Check/>Free Figma plan</span><span><Check/>100% editable</span><span><Check/>Lifetime updates</span><span><Check/>Commercial use</span></div>
-          <form className="launch-form" onSubmit={(e)=>{e.preventDefault();setNotice('You’re on the launch list — welcome to 1Forge Designs.')}}><label htmlFor="launch-email">Your email</label><div><input id="launch-email" type="email" required placeholder="you@studio.com"/><button className="button button--primary" type="submit">Join the launch list <Arrow/></button></div></form>
+          <SubscribeForm id="launch-email" source="main-launch" buttonLabel="Join the launch list" onSuccess={() => setNotice('You’re on the launch list — welcome to 1Forge Designs.')}/>
           <small>No spam. Just the launch, new drops, and genuinely useful design notes.</small>
         </div>
       </section>
@@ -277,8 +528,7 @@ function App() {
     </main>
 
     <footer className="footer section-shell"><Brand/><div><a href="https://studio.1forge.in/">1FORGE STUDIO</a><a href="mailto:hello@1forge.in">EMAIL</a></div><span>© 2026 1FORGE DESIGNS. ALL RIGHTS RESERVED.</span></footer>
-
-    {selected && <div className="modal-backdrop" role="presentation" onMouseDown={(e)=>e.target===e.currentTarget&&setSelected(null)}><div className="preview-modal glass" role="dialog" aria-modal="true" aria-label={`${selected[1]} preview`}><button className="close" onClick={()=>setSelected(null)}>×</button><TemplateMedia item={selected}/><div><span>{selected[0]} / CONCEPT PREVIEW</span><h3>{selected[1]}</h3><p>{selected[3]} · Launch collection</p><button className="button button--primary" onClick={()=>{addToCart(selected);setSelected(null)}}>Add to launch list <Arrow/></button></div></div></div>}
+    </>}
 
     <div className={cartOpen ? 'drawer-backdrop drawer-backdrop--open' : 'drawer-backdrop'} onMouseDown={(e)=>e.target===e.currentTarget&&setCartOpen(false)}>
       <aside className="cart-drawer" aria-hidden={!cartOpen}><header><h2>Your launch list</h2><button className="close" onClick={()=>setCartOpen(false)}>×</button></header>{cart.length ? <div className="cart-items">{cart.map(item=><div key={item[0]}><TemplateMedia item={item} compact/><span><b>{item[1]}</b><small>{item[3]}</small></span><button onClick={()=>setCart(cart.filter(x=>x[0]!==item[0]))}>Remove</button></div>)}</div> : <div className="empty"><Bag/><p>Your list is empty.</p><span>Save the concepts you want to hear about first.</span></div>}<button className="button button--primary drawer-cta" onClick={joinLaunch}>Join for launch access <Arrow/></button></aside>
