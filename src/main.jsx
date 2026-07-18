@@ -131,14 +131,32 @@ function Brand() {
   return <a className="brand" href="/" aria-label="1Forge Designs home"><img src="/brand/1forge-logo.png" alt="1Forge"/></a>
 }
 
+const ecosystemProducts = [
+  { name: 'Studio', label: 'Software, apps & AI', href: 'https://studio.1forge.in/', tone: 'violet', mark: 'S' },
+  { name: 'Designs', label: 'Premium UI/UX templates', href: '/', tone: 'orange', mark: 'D' },
+  { name: 'Hostin', label: 'Property operations', href: 'https://host-in-beta.vercel.app/', tone: 'green', mark: 'H' },
+]
+
+function EcosystemTopBar({ overlay = false }) {
+  return <nav className={`ecosystem-topbar ${overlay ? 'ecosystem-topbar--overlay' : ''}`} aria-label="1Forge products">
+    <span className="ecosystem-topbar__label"><i/><i/><i/>1Forge products</span>
+    <div>{ecosystemProducts.map((product) => <a key={product.name} href={product.href} className={`is-${product.tone} ${product.name === 'Designs' ? 'is-current' : ''}`} aria-current={product.name === 'Designs' ? 'page' : undefined}><i>{product.mark}</i><span>{product.name}<em>{product.label}</em></span>{product.name === 'Designs' ? <small>YOU ARE HERE</small> : <b>↗</b>}</a>)}</div>
+    <span className="ecosystem-topbar__promise">One forge / three products</span>
+  </nav>
+}
+
+function EcosystemVisualSection() {
+  return <section className="ecosystem-visual section-shell section-pad">
+    <header><div><span className="eyebrow">THE 1FORGE ECOSYSTEM</span><h2>One forge.<br/><em>Three ways to build.</em></h2></div><p>Move from shaping a digital product, to designing its presence, to operating the business behind it—all within one connected ecosystem.</p></header>
+    <div className="ecosystem-visual__grid">{ecosystemProducts.map((product, index) => <a href={product.href} className={`is-${product.tone} ${product.name === 'Designs' ? 'is-current' : ''}`} key={product.name}>
+      <div className="ecosystem-visual__number">0{index + 1}</div><div className="ecosystem-visual__mark">{product.mark}<i/><i/></div><span>{product.name === 'Designs' ? 'YOU ARE HERE' : 'OPEN PRODUCT ↗'}</span><h3>{product.name}</h3><p>{product.label}</p><small>{product.name === 'Studio' ? 'Build websites, software and AI systems.' : product.name === 'Designs' ? 'Launch with premium interface foundations.' : 'Run hospitality and property operations.'}</small>
+    </a>)}</div>
+  </section>
+}
+
 function EcosystemSwitcher() {
   const [open, setOpen] = useState(false)
   const rootRef = useRef(null)
-  const products = [
-    ['S', 'Studio', 'Software, apps & AI', 'https://studio.1forge.in/', 'violet'],
-    ['D', 'Designs', 'Premium UI/UX templates', '/', 'orange'],
-    ['H', 'Hostin', 'Property operations', 'https://host-in-beta.vercel.app/', 'green'],
-  ]
 
   useEffect(() => {
     const closeOnEscape = (event) => event.key === 'Escape' && setOpen(false)
@@ -154,7 +172,7 @@ function EcosystemSwitcher() {
   return <div ref={rootRef} className={`design-ecosystem ${open ? 'is-open' : ''}`}>
     <div className="design-ecosystem__panel" aria-hidden={!open} inert={!open}>
       <header><span>1FORGE ECOSYSTEM</span><small>One forge. Three products.</small></header>
-      {products.map(([mark, name, label, href, tone]) => <a key={name} href={href} className={`is-${tone} ${name === 'Designs' ? 'is-current' : ''}`} onClick={() => setOpen(false)}>
+      {ecosystemProducts.map(({ mark, name, label, href, tone }) => <a key={name} href={href} className={`is-${tone} ${name === 'Designs' ? 'is-current' : ''}`} onClick={() => setOpen(false)}>
         <i>{mark}</i><span><strong>{name}</strong><small>{label}</small></span><b>{name === 'Designs' ? 'CURRENT' : '↗'}</b>
       </a>)}
     </div>
@@ -401,6 +419,7 @@ function ProductPage({ item, goHome, openTemplate, saveTemplate, saved }) {
   }, [item])
 
   return <div className="product-page">
+    <EcosystemTopBar overlay/>
     <header className="product-header">
       <Brand/>
       <button className="product-back" onClick={goHome}>← Back to collection</button>
@@ -474,6 +493,7 @@ function ProductPage({ item, goHome, openTemplate, saveTemplate, saved }) {
         <div className="related-grid">{fallbackRelated.map(candidate => <button type="button" data-cursor="OPEN" onClick={() => openTemplate(candidate)} key={candidate[0]}><TemplateMedia item={candidate} compact/><span>{candidate[0]} / {candidate[1]} <i>↗</i></span></button>)}</div>
       </section>
       <ProductFilmstrip item={item} openTemplate={openTemplate} catalog={templates}/>
+      <EcosystemVisualSection/>
     </main>
 
     <footer className="footer section-shell"><Brand/><div><button onClick={goHome}>FULL COLLECTION</button><a href="mailto:hello@1forge.in">EMAIL</a></div><span>© 2026 1FORGE DESIGNS. ALL RIGHTS RESERVED.</span></footer>
@@ -603,6 +623,7 @@ function App() {
     <DesignCommandBar currentTemplate={currentTemplate} goHome={goHome} openCart={() => setCartOpen(true)}/>
     <EcosystemSwitcher/>
     {currentTemplate ? <ProductPage item={currentTemplate} goHome={goHome} openTemplate={openTemplate} saveTemplate={saveTemplate} saved={cart.some((item) => item[0] === currentTemplate[0])}/> : <>
+    <EcosystemTopBar/>
     <header className="header" id="top">
       <Brand/>
       <nav className={menu ? 'nav nav--open' : 'nav'} aria-label="Main navigation">
@@ -685,6 +706,7 @@ function App() {
           ['Are the files fully editable?','Yes—type, color, layout, components, images and copy will all be editable in Figma.']
         ].map(([q,a])=><details key={q}><summary>{q}<span>+</span></summary><p>{a}</p></details>)}</div>
       </section>
+      <EcosystemVisualSection/>
     </main>
 
     <footer className="footer section-shell"><Brand/><div><a href="https://studio.1forge.in/">1FORGE STUDIO</a><a href="mailto:hello@1forge.in">EMAIL</a></div><span>© 2026 1FORGE DESIGNS. ALL RIGHTS RESERVED.</span></footer>
