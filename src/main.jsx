@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import ForgeLoader from './components/ForgeLoader'
 import MediaSkeleton from './components/MediaSkeleton'
+import { CommunityHub, DropVault, ForgePassport, MaterialCursor, ProductExperience, ProductFilmstrip, recordPassport } from './components/ProductExperience'
 import './styles.css'
 
 const templates = [
@@ -115,8 +116,125 @@ const Arrow = () => <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h1
 const Bag = () => <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 8h12l1 12H5L6 8Z"/><path d="M9 9V6a3 3 0 0 1 6 0v3"/></svg>
 const Check = () => <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg>
 
+const getCommandShortcut = () => {
+  const platform = navigator.userAgentData?.platform || navigator.platform || navigator.userAgent || ''
+  return /Mac|iPhone|iPad|iPod/i.test(platform) ? { label: '⌘ K', modifier: 'meta' } : { label: 'Ctrl K', modifier: 'ctrl' }
+}
+
+function useCommandShortcut() {
+  const [shortcut, setShortcut] = useState({ label: 'Ctrl K', modifier: 'ctrl' })
+  useEffect(() => setShortcut(getCommandShortcut()), [])
+  return shortcut
+}
+
 function Brand() {
   return <a className="brand" href="/" aria-label="1Forge Designs home"><img src="/brand/1forge-logo.png" alt="1Forge"/></a>
+}
+
+function EcosystemSwitcher() {
+  const [open, setOpen] = useState(false)
+  const rootRef = useRef(null)
+  const products = [
+    ['S', 'Studio', 'Software, apps & AI', 'https://studio.1forge.in/', 'violet'],
+    ['D', 'Designs', 'Premium UI/UX templates', '/', 'orange'],
+    ['H', 'Hostin', 'Property operations', 'https://host-in-beta.vercel.app/', 'green'],
+  ]
+
+  useEffect(() => {
+    const closeOnEscape = (event) => event.key === 'Escape' && setOpen(false)
+    const closeOutside = (event) => !rootRef.current?.contains(event.target) && setOpen(false)
+    window.addEventListener('keydown', closeOnEscape)
+    window.addEventListener('pointerdown', closeOutside)
+    return () => {
+      window.removeEventListener('keydown', closeOnEscape)
+      window.removeEventListener('pointerdown', closeOutside)
+    }
+  }, [])
+
+  return <div ref={rootRef} className={`design-ecosystem ${open ? 'is-open' : ''}`}>
+    <div className="design-ecosystem__panel" aria-hidden={!open} inert={!open}>
+      <header><span>1FORGE ECOSYSTEM</span><small>One forge. Three products.</small></header>
+      {products.map(([mark, name, label, href, tone]) => <a key={name} href={href} className={`is-${tone} ${name === 'Designs' ? 'is-current' : ''}`} onClick={() => setOpen(false)}>
+        <i>{mark}</i><span><strong>{name}</strong><small>{label}</small></span><b>{name === 'Designs' ? 'CURRENT' : '↗'}</b>
+      </a>)}
+    </div>
+    <button className="design-ecosystem__trigger" type="button" aria-expanded={open} aria-label="Open 1Forge product ecosystem" onClick={() => setOpen(!open)}>
+      <span className="design-ecosystem__rings"><i/><i/><i/></span><span>1Forge</span><b>⌃</b>
+    </button>
+  </div>
+}
+
+function DesignCommandBar({ currentTemplate, goHome, openCart }) {
+  const shortcut = useCommandShortcut()
+  const [open, setOpen] = useState(false)
+  const [query, setQuery] = useState('')
+  const [activeIndex, setActiveIndex] = useState(0)
+  const inputRef = useRef(null)
+
+  const jumpHome = (selector) => {
+    if (currentTemplate) goHome()
+    window.setTimeout(() => document.querySelector(selector)?.scrollIntoView({ behavior: 'smooth' }), currentTemplate ? 80 : 0)
+  }
+
+  const commands = [
+    ...(currentTemplate ? [{ title: `Explore ${currentTemplate[1]}`, detail: 'Return to the cinematic preview', action: () => window.scrollTo({ top: 0, behavior: 'smooth' }), tag: 'preview' }, { title: 'Choose a license', detail: 'Compare single, collection and studio access', action: () => document.querySelector('#product-pricing')?.scrollIntoView({ behavior: 'smooth' }), tag: 'pricing buy license' }] : []),
+    { title: 'Browse all templates', detail: 'Open the complete 39-design collection', action: () => jumpHome('#collection'), tag: 'templates collection' },
+    { title: 'Claim the Friday drop', detail: 'See this week’s free Figma release', action: () => jumpHome('#free-drop'), tag: 'free weekly friday' },
+    { title: 'Open saved concepts', detail: 'Review your persistent launch list', action: openCart, tag: 'saved wishlist launch' },
+    { title: 'Ask about licensing', detail: 'Email the 1Forge team directly', action: () => { window.location.href = 'mailto:hello@1forge.in?subject=1Forge Designs license question' }, tag: 'help contact email' },
+    { title: 'Visit 1Forge Studio', detail: 'Websites, products, apps and AI systems', action: () => window.location.assign('https://studio.1forge.in/'), tag: 'studio services' },
+    { title: 'Open Hostin', detail: 'Property and accommodation operations', action: () => window.location.assign('https://host-in-beta.vercel.app/'), tag: 'hostin property' },
+  ]
+  const filtered = commands.filter((command) => `${command.title} ${command.detail} ${command.tag}`.toLowerCase().includes(query.toLowerCase()))
+
+  useEffect(() => {
+    const handleKey = (event) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+        event.preventDefault()
+        setOpen((current) => !current)
+      }
+      if (event.key === 'Escape') setOpen(false)
+    }
+    window.addEventListener('keydown', handleKey)
+    return () => window.removeEventListener('keydown', handleKey)
+  }, [])
+
+  useEffect(() => {
+    if (!open) return
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    setQuery('')
+    setActiveIndex(0)
+    window.setTimeout(() => inputRef.current?.focus(), 20)
+    return () => { document.body.style.overflow = previousOverflow }
+  }, [open])
+
+  useEffect(() => setActiveIndex(0), [query])
+
+  const run = (command) => {
+    if (!command) return
+    setOpen(false)
+    window.setTimeout(command.action, 30)
+  }
+
+  return <>
+    <button className="design-command-trigger" type="button" onClick={() => setOpen(true)} aria-haspopup="dialog"><span>?</span><b>Help</b><kbd>{shortcut.label}</kbd></button>
+    {open && <div className="design-command-backdrop" role="presentation" onMouseDown={() => setOpen(false)}>
+      <div className="design-command" role="dialog" aria-modal="true" aria-label="1Forge Designs help" onMouseDown={(event) => event.stopPropagation()}>
+        <div className="design-command__search"><span>⌕</span><input ref={inputRef} value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search help, pages and actions…" aria-label="Search commands" onKeyDown={(event) => {
+          if (event.key === 'ArrowDown') { event.preventDefault(); setActiveIndex((index) => Math.min(index + 1, filtered.length - 1)) }
+          if (event.key === 'ArrowUp') { event.preventDefault(); setActiveIndex((index) => Math.max(index - 1, 0)) }
+          if (event.key === 'Enter') { event.preventDefault(); run(filtered[activeIndex]) }
+        }}/><kbd>{shortcut.label}</kbd><button type="button" onClick={() => setOpen(false)} aria-label="Close help">×</button></div>
+        <div className="design-command__heading"><span>QUICK DIRECTIONS</span><small>{filtered.length} available</small></div>
+        <div className="design-command__options" role="listbox">
+          {filtered.map((command, index) => <button type="button" role="option" aria-selected={index === activeIndex} className={index === activeIndex ? 'is-active' : ''} key={command.title} onMouseEnter={() => setActiveIndex(index)} onClick={() => run(command)}><i>{String(index + 1).padStart(2, '0')}</i><span><strong>{command.title}</strong><small>{command.detail}</small></span><b>↗</b></button>)}
+          {!filtered.length && <p>No matching direction. Try “free”, “license” or “saved”.</p>}
+        </div>
+        <footer><span>Use ↑ ↓ to move · Enter to open · Esc to close</span><a href="mailto:hello@1forge.in">Talk to the studio ↗</a></footer>
+      </div>
+    </div>}
+  </>
 }
 
 function TemplateMedia({ item, compact = false, active = true, cinematic = false }) {
@@ -233,7 +351,7 @@ function WeeklyDrop({ openTemplate }) {
         <h2>{item[1]}<br/><em>is on us.</em></h2>
         <p>Get this week’s editable Figma release, then come back next Friday for an entirely new direction. No recycled freebies and no fake countdown.</p>
         <div className="drop-clock"><span>Current drop <strong>{item[0]}</strong></span><span>Next release <strong>{releaseLabel}</strong></span></div>
-        <SubscribeForm id="free-drop-email" source="weekly-free" template={item[1]} buttonLabel="Unlock this week’s drop"/>
+        <SubscribeForm id="free-drop-email" source="weekly-free" template={item[1]} buttonLabel="Unlock this week’s drop" onSuccess={() => recordPassport('weekly-drop', item[1])}/>
         <button className="text-link" onClick={() => openTemplate(item)}>Explore {item[1]} before you join <Arrow/></button>
       </div>
     </div>
@@ -247,6 +365,7 @@ function ProductRating({ item }) {
   const rate = (value) => {
     localStorage.setItem(storageKey, String(value))
     setRating(value)
+    recordPassport('rated', item[1])
   }
 
   return <div className="rating-panel">
@@ -258,7 +377,7 @@ function ProductRating({ item }) {
   </div>
 }
 
-function ProductPage({ item, goHome, saveTemplate, saved }) {
+function ProductPage({ item, goHome, openTemplate, saveTemplate, saved }) {
   const [storyTitle, storyCopy] = getProductStory(item)
   const related = templates.filter((candidate) => candidate[0] !== item[0] && candidate[3].split(' / ')[0] === item[3].split(' / ')[0]).slice(0, 3)
   const fallbackRelated = related.length === 3 ? related : templates.filter((candidate) => candidate[0] !== item[0]).slice(0, 3)
@@ -310,6 +429,8 @@ function ProductPage({ item, goHome, saveTemplate, saved }) {
         <div><p>{storyCopy}</p><p>The cinematic preview sets the mood. The editable file gives you the structure beneath it—ready for your typography, palette, imagery and product story.</p></div>
       </section>
 
+      <ProductExperience item={item} saved={saved} saveTemplate={saveTemplate}/>
+
       <section className="product-showcase section-shell">
         <div className="product-showcase__frame glass"><TemplateMedia item={item} cinematic/><span>4K PRESENTATION / {item[1]}</span></div>
         <div className="product-showcase__notes">
@@ -350,8 +471,9 @@ function ProductPage({ item, goHome, saveTemplate, saved }) {
 
       <section className="related section-shell section-pad">
         <div className="section-head"><div><div className="eyebrow">KEEP EXPLORING</div><h2>More from<br/><em>the forge.</em></h2></div></div>
-        <div className="related-grid">{fallbackRelated.map(candidate => <a href={templatePath(candidate)} key={candidate[0]}><TemplateMedia item={candidate} compact/><span>{candidate[0]} / {candidate[1]} <i>↗</i></span></a>)}</div>
+        <div className="related-grid">{fallbackRelated.map(candidate => <button type="button" data-cursor="OPEN" onClick={() => openTemplate(candidate)} key={candidate[0]}><TemplateMedia item={candidate} compact/><span>{candidate[0]} / {candidate[1]} <i>↗</i></span></button>)}</div>
       </section>
+      <ProductFilmstrip item={item} openTemplate={openTemplate} catalog={templates}/>
     </main>
 
     <footer className="footer section-shell"><Brand/><div><button onClick={goHome}>FULL COLLECTION</button><a href="mailto:hello@1forge.in">EMAIL</a></div><span>© 2026 1FORGE DESIGNS. ALL RIGHTS RESERVED.</span></footer>
@@ -365,7 +487,8 @@ function App() {
   const [cartOpen, setCartOpen] = useState(false)
   const [cart, setCart] = useState(() => {
     try {
-      const savedIds = JSON.parse(localStorage.getItem('1forge-launch-list') || '[]')
+      const sharedIds = new URLSearchParams(window.location.search).get('board')?.split(',').filter(Boolean)
+      const savedIds = sharedIds?.length ? sharedIds : JSON.parse(localStorage.getItem('1forge-launch-list') || '[]')
       return savedIds.map((id) => templates.find((item) => item[0] === id)).filter(Boolean)
     } catch { return [] }
   })
@@ -417,21 +540,30 @@ function App() {
   const saveTemplate = (item, plan) => {
     setCart((current) => current.some((x) => x[0] === item[0]) ? current : [...current, item])
     setNotice(plan ? `${plan} reserved for ${item[1]} — add your email below` : `${item[1]} saved to your launch list`)
+    recordPassport('saved', item[1])
     setTimeout(() => setNotice(''), 2200)
   }
 
   const openTemplate = (item) => {
-    window.history.pushState({}, '', templatePath(item))
-    setCurrentTemplate(item)
-    setMenu(false)
-    window.scrollTo(0, 0)
+    const update = () => {
+      window.history.pushState({}, '', templatePath(item))
+      setCurrentTemplate(item)
+      setMenu(false)
+      window.scrollTo(0, 0)
+    }
+    if (document.startViewTransition && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) document.startViewTransition(update)
+    else update()
   }
 
   const goHome = () => {
-    window.history.pushState({}, '', '/')
-    setCurrentTemplate(null)
-    document.title = '1Forge Designs — Premium Figma Templates'
-    window.scrollTo(0, 0)
+    const update = () => {
+      window.history.pushState({}, '', '/')
+      setCurrentTemplate(null)
+      document.title = '1Forge Designs — Premium Figma Templates'
+      window.scrollTo(0, 0)
+    }
+    if (document.startViewTransition && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) document.startViewTransition(update)
+    else update()
   }
 
   const joinLaunch = () => {
@@ -443,6 +575,23 @@ function App() {
     }, 50)
   }
 
+  const shareBoard = async () => {
+    if (!cart.length) {
+      setNotice('Save at least one concept before sharing a board.')
+      return
+    }
+    const url = new URL(window.location.origin)
+    url.searchParams.set('board', cart.map((item) => item[0]).join(','))
+    try {
+      await navigator.clipboard.writeText(url.toString())
+      recordPassport('shared', `${cart.length} concepts`)
+      setNotice('Shareable launch-board link copied.')
+    } catch {
+      window.prompt('Copy your launch-board link:', url.toString())
+    }
+    window.setTimeout(() => setNotice(''), 2400)
+  }
+
   const loaderAssets = currentTemplate
     ? [window.matchMedia('(min-width: 760px)').matches ? `/videos/4k/template-${currentTemplate[0]}.mp4` : primaryVideoUrl(currentTemplate)]
     : criticalVideoUrls
@@ -450,7 +599,10 @@ function App() {
   return <>
     {!appReady && <ForgeLoader assets={loaderAssets} onComplete={finishLoader}/>}
     <div className="noise" aria-hidden="true"/>
-    {currentTemplate ? <ProductPage item={currentTemplate} goHome={goHome} saveTemplate={saveTemplate} saved={cart.some((item) => item[0] === currentTemplate[0])}/> : <>
+    <MaterialCursor/>
+    <DesignCommandBar currentTemplate={currentTemplate} goHome={goHome} openCart={() => setCartOpen(true)}/>
+    <EcosystemSwitcher/>
+    {currentTemplate ? <ProductPage item={currentTemplate} goHome={goHome} openTemplate={openTemplate} saveTemplate={saveTemplate} saved={cart.some((item) => item[0] === currentTemplate[0])}/> : <>
     <header className="header" id="top">
       <Brand/>
       <nav className={menu ? 'nav nav--open' : 'nav'} aria-label="Main navigation">
@@ -479,7 +631,7 @@ function App() {
         <div className="availability"><span>39 launch concepts</span><span>New releases every week</span><span>Single templates + full pack</span></div>
         <div className="template-grid">
           {templates.map((item) => <article className="template-card glass" key={item[0]}>
-            <button className="template-preview" onClick={() => openTemplate(item)} aria-label={`Explore ${item[1]}`}><TemplateMedia item={item} compact active={!cartOpen}/></button>
+            <button className="template-preview" data-cursor="EXPLORE" onClick={() => openTemplate(item)} aria-label={`Explore ${item[1]}`}><TemplateMedia item={item} compact active={!cartOpen}/></button>
             <div className="template-meta"><span>{item[0]}</span><div><b>{item[1]}</b><small>{item[3]}</small></div><button onClick={() => saveTemplate(item)} aria-label={`Save ${item[1]} to launch list`}><Bag/></button></div>
           </article>)}
         </div>
@@ -494,6 +646,9 @@ function App() {
       </section>
 
       <WeeklyDrop openTemplate={openTemplate}/>
+      <DropVault templates={templates} openTemplate={openTemplate}/>
+      <ForgePassport/>
+      <CommunityHub templates={templates}/>
 
       <section id="for-you" className="section-shell section-pad audience">
         <div className="section-head"><div><div className="eyebrow">WHO IT’S FOR</div><h2>Made for people<br/><em>who care about craft.</em></h2></div></div>
@@ -536,7 +691,7 @@ function App() {
     </>}
 
     <div className={cartOpen ? 'drawer-backdrop drawer-backdrop--open' : 'drawer-backdrop'} onMouseDown={(e)=>e.target===e.currentTarget&&setCartOpen(false)}>
-      <aside className="cart-drawer" aria-hidden={!cartOpen}><header><h2>Your launch list</h2><button className="close" onClick={()=>setCartOpen(false)}>×</button></header>{cart.length ? <div className="cart-items">{cart.map(item=><div key={item[0]}><TemplateMedia item={item} compact/><span><b>{item[1]}</b><small>{item[3]}</small></span><button onClick={()=>setCart(cart.filter(x=>x[0]!==item[0]))}>Remove</button></div>)}</div> : <div className="empty"><Bag/><p>Your list is empty.</p><span>Save the concepts you want to hear about first.</span></div>}<button className="button button--primary drawer-cta" onClick={joinLaunch}>Join for launch access <Arrow/></button></aside>
+      <aside className="cart-drawer" aria-hidden={!cartOpen}><header><div><h2>Your launch board</h2><small>Saved on this device · shareable by link</small></div><button className="close" onClick={()=>setCartOpen(false)}>×</button></header>{cart.length ? <div className="cart-items">{cart.map(item=><div key={item[0]}><TemplateMedia item={item} compact/><span><b>{item[1]}</b><small>{item[3]}</small></span><button onClick={()=>setCart(cart.filter(x=>x[0]!==item[0]))}>Remove</button></div>)}</div> : <div className="empty"><Bag/><p>Your board is empty.</p><span>Save concepts to build a direction you can share.</span></div>}<button className="drawer-share" type="button" onClick={shareBoard}>Copy shareable board link ↗</button><button className="button button--primary drawer-cta" onClick={joinLaunch}>Join for launch access <Arrow/></button></aside>
     </div>
     {notice && <div className="toast" role="status">{notice}</div>}
   </>
