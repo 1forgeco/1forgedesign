@@ -78,3 +78,4 @@ export default async function handler(request, response) {
     return response.status(500).json({ error: 'We couldn’t add you right now. Please try again.' })
   }
 }
+
