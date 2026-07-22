@@ -132,24 +132,25 @@ function Brand() {
 }
 
 const ecosystemProducts = [
-  { name: 'Studio', label: 'Software, apps & AI', href: 'https://studio.1forge.in/', tone: 'violet', mark: 'S' },
-  { name: 'Designs', label: 'Premium UI/UX templates', href: '/', tone: 'orange', mark: 'D' },
-  { name: 'Hostin', label: 'Property operations', href: 'https://host-in-beta.vercel.app/', tone: 'green', mark: 'H' },
+  { name: 'Studio', label: 'Software, apps & AI', description: 'Build websites, software and AI systems.', href: 'https://studio.1forge.in/', tone: 'violet', mark: 'S' },
+  { name: 'Designs', label: 'Premium UI/UX templates', description: 'Launch with premium interface foundations.', href: '/', tone: 'orange', mark: 'D' },
+  { name: 'ForgeOS', label: 'Custom browser agents', description: 'Create, test and deploy visual browser agents.', href: 'https://forgeos-agent-studio.kamalkatal512.chatgpt.site', tone: 'blue', mark: 'F' },
+  { name: 'Hostin', label: 'Property operations', description: 'Run hospitality and property operations.', href: 'https://host-in-beta.vercel.app/', tone: 'green', mark: 'H' },
 ]
 
 function EcosystemTopBar({ overlay = false }) {
   return <nav className={`ecosystem-topbar ${overlay ? 'ecosystem-topbar--overlay' : ''}`} aria-label="1Forge products">
-    <span className="ecosystem-topbar__label"><i/><i/><i/>1Forge products</span>
+    <span className="ecosystem-topbar__label"><i/><i/><i/><i/>1Forge products</span>
     <div>{ecosystemProducts.map((product) => <a key={product.name} href={product.href} className={`is-${product.tone} ${product.name === 'Designs' ? 'is-current' : ''}`} aria-current={product.name === 'Designs' ? 'page' : undefined}><i>{product.mark}</i><span>{product.name}<em>{product.label}</em></span>{product.name === 'Designs' ? <small>YOU ARE HERE</small> : <b>↗</b>}</a>)}</div>
-    <span className="ecosystem-topbar__promise">One forge / three products</span>
+    <span className="ecosystem-topbar__promise">One forge / four products</span>
   </nav>
 }
 
 function EcosystemVisualSection() {
   return <section className="ecosystem-visual section-shell section-pad">
-    <header><div><span className="eyebrow">THE 1FORGE ECOSYSTEM</span><h2>One forge.<br/><em>Three ways to build.</em></h2></div><p>Move from shaping a digital product, to designing its presence, to operating the business behind it—all within one connected ecosystem.</p></header>
+    <header><div><span className="eyebrow">THE 1FORGE ECOSYSTEM</span><h2>One forge.<br/><em>Four ways to build.</em></h2></div><p>Move from shaping a digital product, to designing its presence, to automating work and operating the business behind it—all within one connected ecosystem.</p></header>
     <div className="ecosystem-visual__grid">{ecosystemProducts.map((product, index) => <a href={product.href} className={`is-${product.tone} ${product.name === 'Designs' ? 'is-current' : ''}`} key={product.name}>
-      <div className="ecosystem-visual__number">0{index + 1}</div><div className="ecosystem-visual__mark">{product.mark}<i/><i/></div><span>{product.name === 'Designs' ? 'YOU ARE HERE' : 'OPEN PRODUCT ↗'}</span><h3>{product.name}</h3><p>{product.label}</p><small>{product.name === 'Studio' ? 'Build websites, software and AI systems.' : product.name === 'Designs' ? 'Launch with premium interface foundations.' : 'Run hospitality and property operations.'}</small>
+      <div className="ecosystem-visual__number">0{index + 1}</div><div className="ecosystem-visual__mark">{product.mark}<i/><i/></div><span>{product.name === 'Designs' ? 'YOU ARE HERE' : 'OPEN PRODUCT ↗'}</span><h3>{product.name}</h3><p>{product.label}</p><small>{product.description}</small>
     </a>)}</div>
   </section>
 }
@@ -171,13 +172,13 @@ function EcosystemSwitcher() {
 
   return <div ref={rootRef} className={`design-ecosystem ${open ? 'is-open' : ''}`}>
     <div className="design-ecosystem__panel" aria-hidden={!open} inert={!open}>
-      <header><span>1FORGE ECOSYSTEM</span><small>One forge. Three products.</small></header>
+      <header><span>1FORGE ECOSYSTEM</span><small>One forge. Four products.</small></header>
       {ecosystemProducts.map(({ mark, name, label, href, tone }) => <a key={name} href={href} className={`is-${tone} ${name === 'Designs' ? 'is-current' : ''}`} onClick={() => setOpen(false)}>
         <i>{mark}</i><span><strong>{name}</strong><small>{label}</small></span><b>{name === 'Designs' ? 'CURRENT' : '↗'}</b>
       </a>)}
     </div>
     <button className="design-ecosystem__trigger" type="button" aria-expanded={open} aria-label="Open 1Forge product ecosystem" onClick={() => setOpen(!open)}>
-      <span className="design-ecosystem__rings"><i/><i/><i/></span><span>1Forge</span><b>⌃</b>
+      <span className="design-ecosystem__rings"><i/><i/><i/><i/></span><span>1Forge</span><b>⌃</b>
     </button>
   </div>
 }
@@ -201,6 +202,7 @@ function DesignCommandBar({ currentTemplate, goHome, openCart }) {
     { title: 'Open saved concepts', detail: 'Review your persistent launch list', action: openCart, tag: 'saved wishlist launch' },
     { title: 'Ask about licensing', detail: 'Email the 1Forge team directly', action: () => { window.location.href = 'mailto:hello@1forge.in?subject=1Forge Designs license question' }, tag: 'help contact email' },
     { title: 'Visit 1Forge Studio', detail: 'Websites, products, apps and AI systems', action: () => window.location.assign('https://studio.1forge.in/'), tag: 'studio services' },
+    { title: 'Open ForgeOS', detail: 'Create and deploy custom browser agents', action: () => window.location.assign('https://forgeos-agent-studio.kamalkatal512.chatgpt.site'), tag: 'forgeos agents automation' },
     { title: 'Open Hostin', detail: 'Property and accommodation operations', action: () => window.location.assign('https://host-in-beta.vercel.app/'), tag: 'hostin property' },
   ]
   const filtered = commands.filter((command) => `${command.title} ${command.detail} ${command.tag}`.toLowerCase().includes(query.toLowerCase()))

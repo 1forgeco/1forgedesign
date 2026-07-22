@@ -101,3 +101,16 @@
 
 /* Minimal desktop ecosystem strip */
 @media(min-width:821px){.ecosystem-topbar{height:42px;border-bottom:1px solid rgba(255,255,255,.09);background:#0d0d0e}.ecosystem-topbar--overlay{background:rgba(8,8,9,.78);backdrop-filter:blur(14px)}.ecosystem-topbar__label,.ecosystem-topbar__promise{display:none}.ecosystem-topbar>div{height:100%;gap:0;padding:0;border:0;border-radius:0;background:transparent;box-shadow:none;backdrop-filter:none}.ecosystem-topbar>div:before{display:none}.ecosystem-topbar a,.ecosystem-topbar a:hover,.ecosystem-topbar a.is-current{min-width:112px;height:100%;gap:8px;padding:0 18px;border:0!important;border-radius:0;background:transparent;box-shadow:none;transform:none;transition:color .2s,background .2s}.ecosystem-topbar a+a{border-left:1px solid rgba(255,255,255,.07)!important}.ecosystem-topbar a>i{width:7px;height:7px;flex:0 0 7px;border:0;background:currentColor;font-size:0;box-shadow:none!important}.ecosystem-topbar a>span{display:block}.ecosystem-topbar a span em,.ecosystem-topbar a>small,.ecosystem-topbar a>b{display:none}.ecosystem-topbar a:hover{color:#fff;background:rgba(255,255,255,.025)}.ecosystem-topbar a.is-current:after{content:"";position:absolute;left:20px;right:20px;bottom:0;height:1px;background:#ff8249}.product-page .product-header{top:42px}.product-page .product-hero__topline{top:155px}}
+
+/* ForgeOS joins the shared 1Forge navigator. */
+.design-ecosystem__rings i:nth-child(3){top:6px;right:1px;bottom:auto;border-color:#6f9cff}
+.design-ecosystem__rings i:nth-child(4){right:5px;bottom:0;border-color:#3cb17a}
+.design-ecosystem__panel>a.is-blue>i{color:#6f9cff;background:rgba(111,156,255,.1)}
+.ecosystem-topbar__label i:nth-child(3){margin-right:0;border-color:#6f9cff}
+.ecosystem-topbar__label i:nth-child(4){margin-right:6px;border-color:#4cc78c}
+.ecosystem-visual__grid{grid-template-columns:repeat(4,1fr)}
+.ecosystem-visual__grid>a.is-blue:before{background:#6f9cff}
+.is-blue .ecosystem-visual__mark{color:#6f9cff}
+@media(min-width:821px){.ecosystem-topbar a.is-blue>i{color:#7fa6ff;box-shadow:0 0 24px rgba(111,156,255,.19)}}
+@media(max-width:1100px) and (min-width:821px){.ecosystem-visual__grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:820px){.ecosystem-visual__grid{grid-template-columns:1fr}}
